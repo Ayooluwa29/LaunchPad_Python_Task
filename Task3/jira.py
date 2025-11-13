@@ -5,6 +5,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from db_con import fetch_incident_data
 
+load_dotenv()
 
 # Jira Service Management Configuration (Same as before)
 JIRA_DOMAIN = os.getenv('JIRA_DOMAIN')
@@ -51,7 +52,7 @@ def create_jira_request(payload):
     
     try:
         response = requests.post(
-            JIRA_API_URL,
+            JIRA_DOMAIN,
             headers=headers,
             auth=(JIRA_EMAIL, JIRA_API_TOKEN), 
             data=json_payload
