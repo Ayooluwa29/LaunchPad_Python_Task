@@ -4,7 +4,6 @@ from bs4 import BeautifulSoup
 import pandas as pd
 from clickhouse_driver import Client
 import logging as lgn
-# from typing import Optional
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -30,6 +29,7 @@ click_password = os.getenv("CLICK_PASSWORD")
 click_database = os.getenv("CLICK_DATABASE")
 sub_table = os.getenv("SUBSCRIBERS_TABLE")
 batch = 1000
+CSV_FILE_PATH = os.getenv('CSV_FILE_PATH','subscribers.csv')
 
 def extract_to_df(sheet_url: str) -> pd.DataFrame:
     """Extract data from Google Sheet URL and convert to pandas DataFrame."""
@@ -215,20 +215,42 @@ def load_csv_to_clickhouse(csv_file_path: str, host: str, database: str, table: 
         logger.error(f"Failed to load CSV to ClickHouse: {e}")
         raise
 
+def main(interactive: bool = True):
 
+    try:
+        # Extract from Google Sheet and convert to DataFrame
+        logger.info("Step 1: Extracting data from Google Sheet...")
+        df = extract_to_df(google_sheet)
+        
+        # Clean DataFrame
+        logger.info("\nStep 2: Cleaning DataFrame...")
+        df_clean=clean_dataframe(df)
+        
+        # Save to CSV
+        logger.info("\nStep 3: Saving to CSV...")
+        save_to_csv(df_clean, CSV_FILE_PATH)
+        
+        # Load CSV directly to ClickHouse
+        logger.info("\nStep 4: Loading data to ClickHouse...")
+        load_csv_to_clickhouse(
+            csv_file_path=CSV_FILE_PATH,
+            host=click_host,
+            database=click_database,
+            table=sub_table,
+            user=click_user,
+            password=click_password
+        )
+        
+        print("\n" + "="*80)
+        print("ETL PIPELINE COMPLETED SUCCESSFULLY!")
+        print("="*80 + "\n")
+        
+    except KeyboardInterrupt:
+        logger.warning(" Pipeline interrupted by user")
+        raise
+    except Exception as e:
+        logger.error(f"ETL pipeline failed: {e}")
+        raise
 
-CSV_FILE_PATH = os.getenv('CSV_FILE_PATH','subscribers.csv')
-
-extract_to_df(google_sheet)
-df=extract_to_df(google_sheet)
-clean_dataframe(df)
-df_clean=clean_dataframe(df)
-save_to_csv(df_clean, CSV_FILE_PATH)
-load_csv_to_clickhouse(
-    csv_file_path=CSV_FILE_PATH,
-    host=click_host,
-    database=click_database,
-    table=sub_table,
-    user=click_user,
-    password=click_password
-)
+if __name__ == "__main__":
+    main()
